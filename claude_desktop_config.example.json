@@ -3,7 +3,7 @@
     "database": {
       "command": "dotnet",
       "args": [
-        "C:\\Users\\a.maramotti\\source\\repos\\Database-MCP\\src\\DatabaseMcp\\bin\\Release\\net10.0\\DatabaseMcp.dll"
+        "C:\\Users\\username\\source\\repos\\Database-MCP\\src\\DatabaseMcp\\bin\\Release\\net10.0\\DatabaseMcp.dll"
       ],
       "env": {
         "SQLSERVER_HOST": "your-sql-server-instance",

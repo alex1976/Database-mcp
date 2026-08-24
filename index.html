@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Database-MCP — SQL Server MCP Server</title>
+<script>
+  (function () {
+    var saved = localStorage.getItem('dbmcp-lang');
+    var browserLang = ((navigator.language || 'en').toLowerCase().indexOf('it') === 0) ? 'it' : 'en';
+    document.documentElement.setAttribute('data-lang', saved || browserLang);
+  })();
+</script>
 <style>
   :root {
     --bg: #0b0d12;
@@ -21,6 +28,9 @@
   }
 
   * { box-sizing: border-box; }
+
+  html[data-lang="en"] .it { display: none; }
+  html[data-lang="it"] .en { display: none; }
 
   body {
     margin: 0;
@@ -56,6 +66,36 @@
     background: none;
     color: var(--text);
     padding: 0;
+  }
+
+  .lang-switch {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 10;
+    display: flex;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.2rem;
+    gap: 0.2rem;
+  }
+  .lang-switch button {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    font-family: var(--sans);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .lang-switch button.active {
+    background: var(--accent);
+    color: #06101f;
   }
 
   header {
@@ -233,7 +273,7 @@
     font-size: 0.92rem;
   }
   .tech-list strong { color: var(--text); }
-  .tech-list span { color: var(--text-dim); display: block; margin-top: 0.15rem; }
+  .tech-list span.desc { color: var(--text-dim); display: block; margin-top: 0.15rem; }
 
   .safety-list {
     display: grid;
@@ -282,29 +322,46 @@
 </head>
 <body>
 
+<div class="lang-switch">
+  <button type="button" data-lang-btn="en">EN</button>
+  <button type="button" data-lang-btn="it">IT</button>
+</div>
+
 <header>
   <span class="badge">Model Context Protocol · .NET 10</span>
   <h1>Database-MCP</h1>
   <p class="tagline">
-    An MCP server that exposes a SQL Server database — Azure or on-prem — to Claude.
+    <span class="en">An MCP server that exposes a SQL Server database — Azure or on-prem — to Claude.
     Browse schemas, tables and views, inspect structure, and query or export data as CSV/TXT.
-    Read-only, by construction.
+    Read-only, by construction.</span>
+    <span class="it">Un server MCP che espone un database SQL Server — Azure o on-premise — a Claude.
+    Naviga schemi, tabelle e viste, ispeziona la struttura ed esegui query o esporta dati in CSV/TXT.
+    Di sola lettura, per costruzione.</span>
   </p>
   <div class="cta-row">
-    <a class="btn btn-primary" href="README.md">Read the docs</a>
-    <a class="btn btn-ghost" href="claude_desktop_config.example.json">Config example</a>
-    <a class="btn btn-ghost" href="skill/SKILL.md">Claude skill</a>
+    <a class="btn btn-primary" href="README.md">
+      <span class="en">Read the docs</span><span class="it">Leggi la documentazione</span>
+    </a>
+    <a class="btn btn-ghost" href="claude_desktop_config.example.json">
+      <span class="en">Config example</span><span class="it">Esempio di configurazione</span>
+    </a>
+    <a class="btn btn-ghost" href="skill/SKILL.md">
+      <span class="en">Claude skill</span><span class="it">Skill per Claude</span>
+    </a>
   </div>
 </header>
 
 <main>
 
   <section id="architecture">
-    <h2>Architecture</h2>
+    <h2><span class="en">Architecture</span><span class="it">Architettura</span></h2>
     <p class="lede">
-      A single .NET console application that speaks MCP over <strong>stdio</strong>. Claude launches
+      <span class="en">A single .NET console application that speaks MCP over <strong>stdio</strong>. Claude launches
       the process; JSON-RPC flows over stdin/stdout while all logging goes to stderr so it never
-      corrupts the protocol stream.
+      corrupts the protocol stream.</span>
+      <span class="it">Un'unica applicazione console .NET che comunica tramite MCP su <strong>stdio</strong>. Claude avvia
+      il processo; i messaggi JSON-RPC transitano su stdin/stdout, mentre tutto il logging viene scritto
+      su stderr, così da non corrompere mai il flusso del protocollo.</span>
     </p>
     <div class="diagram">
 <pre>Claude  &lt;--stdio(JSON-RPC)--&gt;  DatabaseMcp.dll
@@ -328,94 +385,247 @@
   </section>
 
   <section id="tools">
-    <h2>MCP tools</h2>
-    <p class="lede">Eight tools cover schema navigation, structured queries, raw SQL, and bulk export.</p>
+    <h2><span class="en">MCP tools</span><span class="it">Strumenti MCP</span></h2>
+    <p class="lede">
+      <span class="en">Eight tools cover schema navigation, structured queries, raw SQL, and bulk export.</span>
+      <span class="it">Otto strumenti coprono la navigazione dello schema, query strutturate, SQL grezzo ed esportazione massiva.</span>
+    </p>
     <table>
-      <thead><tr><th>Tool</th><th>Purpose</th></tr></thead>
+      <thead><tr>
+        <th><span class="en">Tool</span><span class="it">Strumento</span></th>
+        <th><span class="en">Purpose</span><span class="it">Scopo</span></th>
+      </tr></thead>
       <tbody>
-        <tr><td class="tool-name">list_schemas</td><td>List user schemas (system schemas excluded)</td></tr>
-        <tr><td class="tool-name">list_tables</td><td>List tables, optionally filtered by schema, with approximate row counts</td></tr>
-        <tr><td class="tool-name">list_views</td><td>List views, optionally filtered by schema</td></tr>
-        <tr><td class="tool-name">describe_table</td><td>Columns, primary key, foreign keys, indexes, approximate row count</td></tr>
-        <tr><td class="tool-name">describe_view</td><td>Columns and SQL definition for a view</td></tr>
-        <tr><td class="tool-name">execute_sql</td><td>Run a raw read-only <code>SELECT</code>/<code>WITH</code> statement; CSV/TXT inline, row-capped</td></tr>
-        <tr><td class="tool-name">query_data</td><td>Query a table/view via structured columns/filters/order/limit — no raw SQL needed</td></tr>
-        <tr><td class="tool-name">export_data</td><td>Stream the <strong>full</strong> result of a <code>SELECT</code> to a CSV/TXT file on disk</td></tr>
+        <tr>
+          <td class="tool-name">list_schemas</td>
+          <td>
+            <span class="en">List user schemas (system schemas excluded)</span>
+            <span class="it">Elenca gli schemi utente (esclusi gli schemi di sistema)</span>
+          </td>
+        </tr>
+        <tr>
+          <td class="tool-name">list_tables</td>
+          <td>
+            <span class="en">List tables, optionally filtered by schema, with approximate row counts</span>
+            <span class="it">Elenca le tabelle, filtrabili per schema, con conteggio righe approssimativo</span>
+          </td>
+        </tr>
+        <tr>
+          <td class="tool-name">list_views</td>
+          <td>
+            <span class="en">List views, optionally filtered by schema</span>
+            <span class="it">Elenca le viste, filtrabili per schema</span>
+          </td>
+        </tr>
+        <tr>
+          <td class="tool-name">describe_table</td>
+          <td>
+            <span class="en">Columns, primary key, foreign keys, indexes, approximate row count</span>
+            <span class="it">Colonne, chiave primaria, chiavi esterne, indici, conteggio righe approssimativo</span>
+          </td>
+        </tr>
+        <tr>
+          <td class="tool-name">describe_view</td>
+          <td>
+            <span class="en">Columns and SQL definition for a view</span>
+            <span class="it">Colonne e definizione SQL di una vista</span>
+          </td>
+        </tr>
+        <tr>
+          <td class="tool-name">execute_sql</td>
+          <td>
+            <span class="en">Run a raw read-only <code>SELECT</code>/<code>WITH</code> statement; CSV/TXT inline, row-capped</span>
+            <span class="it">Esegue un'istruzione <code>SELECT</code>/<code>WITH</code> grezza e di sola lettura; CSV/TXT inline, con limite di righe</span>
+          </td>
+        </tr>
+        <tr>
+          <td class="tool-name">query_data</td>
+          <td>
+            <span class="en">Query a table/view via structured columns/filters/order/limit — no raw SQL needed</span>
+            <span class="it">Interroga una tabella/vista con colonne/filtri/ordinamento/limite strutturati — senza SQL grezzo</span>
+          </td>
+        </tr>
+        <tr>
+          <td class="tool-name">export_data</td>
+          <td>
+            <span class="en">Stream the <strong>full</strong> result of a <code>SELECT</code> to a CSV/TXT file on disk</span>
+            <span class="it">Trasferisce in streaming il risultato <strong>completo</strong> di una <code>SELECT</code> in un file CSV/TXT su disco</span>
+          </td>
+        </tr>
       </tbody>
     </table>
   </section>
 
   <section id="safety">
-    <h2>Safety model</h2>
-    <p class="lede">Every code path only ever runs read-only <code>SELECT</code> statements against the database.</p>
+    <h2><span class="en">Safety model</span><span class="it">Modello di sicurezza</span></h2>
+    <p class="lede">
+      <span class="en">Every code path only ever runs read-only <code>SELECT</code> statements against the database.</span>
+      <span class="it">Ogni percorso di codice esegue esclusivamente istruzioni <code>SELECT</code> di sola lettura sul database.</span>
+    </p>
     <div class="safety-list">
       <div class="safety-item">
         <span class="icon">&#9679;</span>
         <div>
-          <strong>Guarded raw SQL.</strong>
-          <p><code>execute_sql</code> and <code>export_data</code> reject anything that isn't a single <code>SELECT</code> (optionally with a leading <code>WITH</code> CTE) — no INSERT/UPDATE/DELETE/MERGE/DDL/EXEC/multiple statements.</p>
+          <strong><span class="en">Guarded raw SQL.</span><span class="it">SQL grezzo protetto.</span></strong>
+          <p>
+            <span class="en"><code>execute_sql</code> and <code>export_data</code> reject anything that isn't a single <code>SELECT</code> (optionally with a leading <code>WITH</code> CTE) — no INSERT/UPDATE/DELETE/MERGE/DDL/EXEC/multiple statements.</span>
+            <span class="it"><code>execute_sql</code> ed <code>export_data</code> rifiutano tutto ciò che non è una singola <code>SELECT</code> (eventualmente con una <code>WITH</code> CTE iniziale) — niente INSERT/UPDATE/DELETE/MERGE/DDL/EXEC/istruzioni multiple.</span>
+          </p>
         </div>
       </div>
       <div class="safety-item">
         <span class="icon">&#9679;</span>
         <div>
-          <strong>No injection surface in <code>query_data</code>.</strong>
-          <p>Structured queries are built server-side: identifiers are validated and bracketed, filter values are always bound as parameters.</p>
+          <strong><span class="en">No injection surface in <code>query_data</code>.</span><span class="it">Nessuna superficie di injection in <code>query_data</code>.</span></strong>
+          <p>
+            <span class="en">Structured queries are built server-side: identifiers are validated and bracketed, filter values are always bound as parameters.</span>
+            <span class="it">Le query strutturate vengono costruite lato server: gli identificatori sono validati e racchiusi tra parentesi, i valori dei filtri sono sempre passati come parametri.</span>
+          </p>
         </div>
       </div>
       <div class="safety-item">
         <span class="icon">&#9679;</span>
         <div>
-          <strong>Context-safe by default.</strong>
-          <p>Inline results are capped at a configurable row count to protect the LLM's context window; responses report whether output was truncated.</p>
+          <strong><span class="en">Context-safe by default.</span><span class="it">Sicuro per il contesto, di default.</span></strong>
+          <p>
+            <span class="en">Inline results are capped at a configurable row count to protect the LLM's context window; responses report whether output was truncated.</span>
+            <span class="it">I risultati inline sono limitati a un numero di righe configurabile per proteggere la finestra di contesto dell'LLM; le risposte indicano se l'output è stato troncato.</span>
+          </p>
         </div>
       </div>
       <div class="safety-item">
         <span class="icon">&#9679;</span>
         <div>
-          <strong>Streaming export, no buffering.</strong>
-          <p><code>export_data</code> streams directly from the <code>SqlDataReader</code> to disk, so extracting millions of rows never loads them fully into memory.</p>
+          <strong><span class="en">Streaming export, no buffering.</span><span class="it">Esportazione in streaming, senza buffering.</span></strong>
+          <p>
+            <span class="en"><code>export_data</code> streams directly from the <code>SqlDataReader</code> to disk, so extracting millions of rows never loads them fully into memory.</span>
+            <span class="it"><code>export_data</code> trasferisce i dati direttamente dal <code>SqlDataReader</code> al disco, così estrarre milioni di righe non le carica mai completamente in memoria.</span>
+          </p>
         </div>
       </div>
     </div>
   </section>
 
   <section id="tech">
-    <h2>Technology</h2>
+    <h2><span class="en">Technology</span><span class="it">Tecnologia</span></h2>
     <ul class="tech-list">
-      <li><strong>.NET 10 / C#</strong><span>Console app, <code>net10.0</code></span></li>
-      <li><strong>ModelContextProtocol SDK</strong><span>Official C# MCP SDK — stdio transport, tool discovery</span></li>
-      <li><strong>Microsoft.Data.SqlClient</strong><span>SQL Server connectivity — Azure SQL and on-prem</span></li>
-      <li><strong>Microsoft.Extensions.Hosting</strong><span>Generic host, dependency injection, logging</span></li>
-      <li><strong>xUnit</strong><span>Unit + integration test suite in <code>tests/DatabaseMcp.Tests</code></span></li>
-      <li><strong>No ORM</strong><span>Hand-written, parameterized ADO.NET for predictable streaming performance</span></li>
+      <li>
+        <strong>.NET 10 / C#</strong>
+        <span class="desc"><span class="en">Console app, <code>net10.0</code></span><span class="it">Applicazione console, <code>net10.0</code></span></span>
+      </li>
+      <li>
+        <strong>ModelContextProtocol SDK</strong>
+        <span class="desc">
+          <span class="en">Official C# MCP SDK — stdio transport, tool discovery</span>
+          <span class="it">SDK ufficiale C# per MCP — trasporto stdio, discovery degli strumenti</span>
+        </span>
+      </li>
+      <li>
+        <strong>Microsoft.Data.SqlClient</strong>
+        <span class="desc">
+          <span class="en">SQL Server connectivity — Azure SQL and on-prem</span>
+          <span class="it">Connettività a SQL Server — Azure SQL e on-premise</span>
+        </span>
+      </li>
+      <li>
+        <strong>Microsoft.Extensions.Hosting</strong>
+        <span class="desc">
+          <span class="en">Generic host, dependency injection, logging</span>
+          <span class="it">Generic host, dependency injection, logging</span>
+        </span>
+      </li>
+      <li>
+        <strong>xUnit</strong>
+        <span class="desc">
+          <span class="en">Unit + integration test suite in <code>tests/DatabaseMcp.Tests</code></span>
+          <span class="it">Suite di test unitari e di integrazione in <code>tests/DatabaseMcp.Tests</code></span>
+        </span>
+      </li>
+      <li>
+        <strong><span class="en">No ORM</span><span class="it">Nessun ORM</span></strong>
+        <span class="desc">
+          <span class="en">Hand-written, parameterized ADO.NET for predictable streaming performance</span>
+          <span class="it">ADO.NET scritto a mano e parametrizzato, per prestazioni di streaming prevedibili</span>
+        </span>
+      </li>
     </ul>
   </section>
 
   <section id="status">
-    <h2>Project status</h2>
-    <p class="lede"><span class="status-pill">88 / 88 tests passing</span> — 78 unit tests plus 10 integration tests exercised against a live SQL Server instance.</p>
+    <h2><span class="en">Project status</span><span class="it">Stato del progetto</span></h2>
+    <p class="lede">
+      <span class="status-pill"><span class="en">88 / 88 tests passing</span><span class="it">88 / 88 test superati</span></span>
+      <span class="en"> — 78 unit tests plus 10 integration tests exercised against a live SQL Server instance.</span>
+      <span class="it"> — 78 test unitari e 10 test di integrazione eseguiti contro un'istanza reale di SQL Server.</span>
+    </p>
     <div class="grid">
-      <div class="card"><h3><span class="dot"></span>Read-only by design</h3><p>Every tool routes through the SQL guard or the parameterized query builder — never raw concatenation.</p></div>
-      <div class="card"><h3><span class="dot"></span>Configurable via env vars</h3><p><code>SQLSERVER_HOST</code>, <code>SQLSERVER_DATABASE</code>, <code>SQLSERVER_USER</code>/<code>PASSWORD</code>, encryption and row-cap settings.</p></div>
-      <div class="card"><h3><span class="dot"></span>Azure SQL &amp; on-prem</h3><p>Falls back to Windows Integrated Security when no credentials are supplied.</p></div>
-      <div class="card"><h3><span class="dot"></span>Ships with a Claude skill</h3><p><code>skill/SKILL.md</code> teaches Claude the recommended orient → inspect → query → export workflow.</p></div>
+      <div class="card">
+        <h3><span class="dot"></span><span class="en">Read-only by design</span><span class="it">Di sola lettura per progettazione</span></h3>
+        <p>
+          <span class="en">Every tool routes through the SQL guard or the parameterized query builder — never raw concatenation.</span>
+          <span class="it">Ogni strumento passa attraverso il guard SQL o il costruttore di query parametrizzate — mai concatenazione diretta.</span>
+        </p>
+      </div>
+      <div class="card">
+        <h3><span class="dot"></span><span class="en">Configurable via env vars</span><span class="it">Configurabile via variabili d'ambiente</span></h3>
+        <p><code>SQLSERVER_HOST</code>, <code>SQLSERVER_DATABASE</code>, <code>SQLSERVER_USER</code>/<code>PASSWORD</code>, <span class="en">encryption and row-cap settings.</span><span class="it">impostazioni di crittografia e limite righe.</span></p>
+      </div>
+      <div class="card">
+        <h3><span class="dot"></span><span class="en">Azure SQL &amp; on-prem</span><span class="it">Azure SQL e on-premise</span></h3>
+        <p>
+          <span class="en">Falls back to Windows Integrated Security when no credentials are supplied.</span>
+          <span class="it">Ricade automaticamente su Windows Integrated Security se non vengono fornite credenziali.</span>
+        </p>
+      </div>
+      <div class="card">
+        <h3><span class="dot"></span><span class="en">Ships with a Claude skill</span><span class="it">Include una skill per Claude</span></h3>
+        <p>
+          <span class="en"><code>skill/SKILL.md</code> teaches Claude the recommended orient → inspect → query → export workflow.</span>
+          <span class="it"><code>skill/SKILL.md</code> insegna a Claude il flusso di lavoro consigliato: orientarsi → ispezionare → interrogare → esportare.</span>
+        </p>
+      </div>
     </div>
   </section>
 
   <section id="quickstart">
-    <h2>Quickstart</h2>
-    <p class="lede">Build the solution, then point an MCP client at the compiled DLL.</p>
+    <h2><span class="en">Quickstart</span><span class="it">Avvio rapido</span></h2>
+    <p class="lede">
+      <span class="en">Build the solution, then point an MCP client at the compiled DLL.</span>
+      <span class="it">Compila la soluzione, quindi punta un client MCP alla DLL compilata.</span>
+    </p>
     <pre><code>dotnet build -c Release
 dotnet test</code></pre>
-    <p class="lede" style="margin-top:1.5rem;">Add it to Claude Desktop or Claude Code using <a href="claude_desktop_config.example.json">claude_desktop_config.example.json</a> as a template — fill in your real host and credentials.</p>
+    <p class="lede" style="margin-top:1.5rem;">
+      <span class="en">Add it to Claude Desktop or Claude Code using <a href="claude_desktop_config.example.json">claude_desktop_config.example.json</a> as a template — fill in your real host and credentials.</span>
+      <span class="it">Aggiungilo a Claude Desktop o Claude Code usando <a href="claude_desktop_config.example.json">claude_desktop_config.example.json</a> come modello — inserisci il tuo host e le tue credenziali reali.</span>
+    </p>
   </section>
 
 </main>
 
 <footer>
-  Database-MCP — see <a href="README.md">README.md</a> for full documentation.
+  <span class="en">Database-MCP — see <a href="README.md">README.md</a> for full documentation.</span>
+  <span class="it">Database-MCP — consulta il <a href="README.md">README.md</a> per la documentazione completa.</span>
 </footer>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    function setLang(lang) {
+      root.setAttribute('data-lang', lang);
+      localStorage.setItem('dbmcp-lang', lang);
+      document.querySelectorAll('[data-lang-btn]').forEach(function (btn) {
+        btn.classList.toggle('active', btn.getAttribute('data-lang-btn') === lang);
+      });
+    }
+    document.querySelectorAll('[data-lang-btn]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        setLang(btn.getAttribute('data-lang-btn'));
+      });
+    });
+    setLang(root.getAttribute('data-lang'));
+  })();
+</script>
 
 </body>
 </html>
