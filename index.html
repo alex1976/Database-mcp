@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Database-MCP — SQL Server MCP Server</title>
+<style>
+  :root {
+    --bg: #0b0d12;
+    --bg-panel: #12151c;
+    --bg-card: #161a23;
+    --border: #262b38;
+    --text: #e6e9f0;
+    --text-dim: #9aa3b5;
+    --accent: #5b8def;
+    --accent-soft: rgba(91, 141, 239, 0.12);
+    --green: #4cc38a;
+    --amber: #e0a239;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.6;
+  }
+
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  code, pre {
+    font-family: var(--mono);
+    font-size: 0.88em;
+  }
+
+  code {
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+  }
+
+  pre {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+  }
+  pre code {
+    background: none;
+    color: var(--text);
+    padding: 0;
+  }
+
+  header {
+    padding: 5rem 1.5rem 3.5rem;
+    text-align: center;
+    background:
+      radial-gradient(600px 300px at 50% -10%, var(--accent-soft), transparent 70%);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .badge {
+    display: inline-block;
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border: 1px solid rgba(91, 141, 239, 0.35);
+    padding: 0.3rem 0.75rem;
+    border-radius: 999px;
+    margin-bottom: 1.25rem;
+  }
+
+  h1 {
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    margin: 0 0 0.75rem;
+    letter-spacing: -0.02em;
+  }
+
+  header p.tagline {
+    max-width: 640px;
+    margin: 0 auto;
+    color: var(--text-dim);
+    font-size: 1.15rem;
+  }
+
+  .cta-row {
+    margin-top: 2rem;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    display: inline-block;
+    padding: 0.65rem 1.3rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    border: 1px solid var(--border);
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #06101f;
+    border-color: var(--accent);
+  }
+  .btn-primary:hover { text-decoration: none; filter: brightness(1.08); }
+  .btn-ghost { color: var(--text); }
+  .btn-ghost:hover { text-decoration: none; border-color: var(--accent); color: var(--accent); }
+
+  main {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+
+  section {
+    padding: 4rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  section:last-of-type { border-bottom: none; }
+
+  section h2 {
+    font-size: 1.7rem;
+    margin: 0 0 0.4rem;
+    letter-spacing: -0.01em;
+  }
+
+  section .lede {
+    color: var(--text-dim);
+    margin: 0 0 2rem;
+    max-width: 720px;
+  }
+
+  .diagram {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    overflow-x: auto;
+  }
+  .diagram pre {
+    border: none;
+    background: none;
+    padding: 0;
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--text-dim);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+  }
+
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem 1.4rem;
+  }
+  .card h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1.02rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .card p {
+    margin: 0;
+    color: var(--text-dim);
+    font-size: 0.92rem;
+  }
+  .card code { font-size: 0.85em; }
+
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 0.7rem 0.9rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  th {
+    color: var(--text-dim);
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  tr:last-child td { border-bottom: none; }
+  td code { white-space: nowrap; }
+
+  .tool-name {
+    font-family: var(--mono);
+    color: var(--accent);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .tech-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 0.75rem;
+  }
+  .tech-list li {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.9rem 1.1rem;
+    font-size: 0.92rem;
+  }
+  .tech-list strong { color: var(--text); }
+  .tech-list span { color: var(--text-dim); display: block; margin-top: 0.15rem; }
+
+  .safety-list {
+    display: grid;
+    gap: 0.75rem;
+  }
+  .safety-item {
+    display: flex;
+    gap: 0.85rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+  }
+  .safety-item .icon {
+    color: var(--green);
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+  .safety-item p { margin: 0.15rem 0 0; color: var(--text-dim); font-size: 0.92rem; }
+  .safety-item strong { color: var(--text); }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    color: var(--green);
+    background: rgba(76, 195, 138, 0.12);
+    border: 1px solid rgba(76, 195, 138, 0.3);
+    padding: 0.25rem 0.7rem;
+    border-radius: 999px;
+  }
+  .status-pill::before {
+    content: "";
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--green);
+  }
+
+  footer {
+    text-align: center;
+    padding: 3rem 1.5rem 4rem;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="badge">Model Context Protocol · .NET 10</span>
+  <h1>Database-MCP</h1>
+  <p class="tagline">
+    An MCP server that exposes a SQL Server database — Azure or on-prem — to Claude.
+    Browse schemas, tables and views, inspect structure, and query or export data as CSV/TXT.
+    Read-only, by construction.
+  </p>
+  <div class="cta-row">
+    <a class="btn btn-primary" href="README.md">Read the docs</a>
+    <a class="btn btn-ghost" href="claude_desktop_config.example.json">Config example</a>
+    <a class="btn btn-ghost" href="skill/SKILL.md">Claude skill</a>
+  </div>
+</header>
+
+<main>
+
+  <section id="architecture">
+    <h2>Architecture</h2>
+    <p class="lede">
+      A single .NET console application that speaks MCP over <strong>stdio</strong>. Claude launches
+      the process; JSON-RPC flows over stdin/stdout while all logging goes to stderr so it never
+      corrupts the protocol stream.
+    </p>
+    <div class="diagram">
+<pre>Claude  &lt;--stdio(JSON-RPC)--&gt;  DatabaseMcp.dll
+                                   │
+                        ModelContextProtocol SDK
+                         (tool discovery/dispatch)
+                                   │
+                    ┌──────────────┴──────────────┐
+                 Tools/                          Data/
+          SchemaTools, DataTools          SchemaService, QueryService
+          (MCP-facing, arg parsing,       (SQL Server access via
+           error translation)             Microsoft.Data.SqlClient)
+                                                   │
+                                            Security/
+                                    SqlGuard (read-only SELECT guard)
+                                    SqlIdentifier (safe identifier bracketing)
+                                                   │
+                                              SQL Server
+                                          (Azure SQL or on-prem)</pre>
+    </div>
+  </section>
+
+  <section id="tools">
+    <h2>MCP tools</h2>
+    <p class="lede">Eight tools cover schema navigation, structured queries, raw SQL, and bulk export.</p>
+    <table>
+      <thead><tr><th>Tool</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td class="tool-name">list_schemas</td><td>List user schemas (system schemas excluded)</td></tr>
+        <tr><td class="tool-name">list_tables</td><td>List tables, optionally filtered by schema, with approximate row counts</td></tr>
+        <tr><td class="tool-name">list_views</td><td>List views, optionally filtered by schema</td></tr>
+        <tr><td class="tool-name">describe_table</td><td>Columns, primary key, foreign keys, indexes, approximate row count</td></tr>
+        <tr><td class="tool-name">describe_view</td><td>Columns and SQL definition for a view</td></tr>
+        <tr><td class="tool-name">execute_sql</td><td>Run a raw read-only <code>SELECT</code>/<code>WITH</code> statement; CSV/TXT inline, row-capped</td></tr>
+        <tr><td class="tool-name">query_data</td><td>Query a table/view via structured columns/filters/order/limit — no raw SQL needed</td></tr>
+        <tr><td class="tool-name">export_data</td><td>Stream the <strong>full</strong> result of a <code>SELECT</code> to a CSV/TXT file on disk</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="safety">
+    <h2>Safety model</h2>
+    <p class="lede">Every code path only ever runs read-only <code>SELECT</code> statements against the database.</p>
+    <div class="safety-list">
+      <div class="safety-item">
+        <span class="icon">&#9679;</span>
+        <div>
+          <strong>Guarded raw SQL.</strong>
+          <p><code>execute_sql</code> and <code>export_data</code> reject anything that isn't a single <code>SELECT</code> (optionally with a leading <code>WITH</code> CTE) — no INSERT/UPDATE/DELETE/MERGE/DDL/EXEC/multiple statements.</p>
+        </div>
+      </div>
+      <div class="safety-item">
+        <span class="icon">&#9679;</span>
+        <div>
+          <strong>No injection surface in <code>query_data</code>.</strong>
+          <p>Structured queries are built server-side: identifiers are validated and bracketed, filter values are always bound as parameters.</p>
+        </div>
+      </div>
+      <div class="safety-item">
+        <span class="icon">&#9679;</span>
+        <div>
+          <strong>Context-safe by default.</strong>
+          <p>Inline results are capped at a configurable row count to protect the LLM's context window; responses report whether output was truncated.</p>
+        </div>
+      </div>
+      <div class="safety-item">
+        <span class="icon">&#9679;</span>
+        <div>
+          <strong>Streaming export, no buffering.</strong>
+          <p><code>export_data</code> streams directly from the <code>SqlDataReader</code> to disk, so extracting millions of rows never loads them fully into memory.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tech">
+    <h2>Technology</h2>
+    <ul class="tech-list">
+      <li><strong>.NET 10 / C#</strong><span>Console app, <code>net10.0</code></span></li>
+      <li><strong>ModelContextProtocol SDK</strong><span>Official C# MCP SDK — stdio transport, tool discovery</span></li>
+      <li><strong>Microsoft.Data.SqlClient</strong><span>SQL Server connectivity — Azure SQL and on-prem</span></li>
+      <li><strong>Microsoft.Extensions.Hosting</strong><span>Generic host, dependency injection, logging</span></li>
+      <li><strong>xUnit</strong><span>Unit + integration test suite in <code>tests/DatabaseMcp.Tests</code></span></li>
+      <li><strong>No ORM</strong><span>Hand-written, parameterized ADO.NET for predictable streaming performance</span></li>
+    </ul>
+  </section>
+
+  <section id="status">
+    <h2>Project status</h2>
+    <p class="lede"><span class="status-pill">88 / 88 tests passing</span> — 78 unit tests plus 10 integration tests exercised against a live SQL Server instance.</p>
+    <div class="grid">
+      <div class="card"><h3><span class="dot"></span>Read-only by design</h3><p>Every tool routes through the SQL guard or the parameterized query builder — never raw concatenation.</p></div>
+      <div class="card"><h3><span class="dot"></span>Configurable via env vars</h3><p><code>SQLSERVER_HOST</code>, <code>SQLSERVER_DATABASE</code>, <code>SQLSERVER_USER</code>/<code>PASSWORD</code>, encryption and row-cap settings.</p></div>
+      <div class="card"><h3><span class="dot"></span>Azure SQL &amp; on-prem</h3><p>Falls back to Windows Integrated Security when no credentials are supplied.</p></div>
+      <div class="card"><h3><span class="dot"></span>Ships with a Claude skill</h3><p><code>skill/SKILL.md</code> teaches Claude the recommended orient → inspect → query → export workflow.</p></div>
+    </div>
+  </section>
+
+  <section id="quickstart">
+    <h2>Quickstart</h2>
+    <p class="lede">Build the solution, then point an MCP client at the compiled DLL.</p>
+    <pre><code>dotnet build -c Release
+dotnet test</code></pre>
+    <p class="lede" style="margin-top:1.5rem;">Add it to Claude Desktop or Claude Code using <a href="claude_desktop_config.example.json">claude_desktop_config.example.json</a> as a template — fill in your real host and credentials.</p>
+  </section>
+
+</main>
+
+<footer>
+  Database-MCP — see <a href="README.md">README.md</a> for full documentation.
+</footer>
+
+</body>
+</html>

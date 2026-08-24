@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "database": {
+      "command": "dotnet",
+      "args": [
+        "C:\\Users\\a.maramotti\\source\\repos\\Database-MCP\\src\\DatabaseMcp\\bin\\Release\\net10.0\\DatabaseMcp.dll"
+      ],
+      "env": {
+        "SQLSERVER_HOST": "your-sql-server-instance",
+        "SQLSERVER_DATABASE": "your-database",
+        "SQLSERVER_USER": "your-username",
+        "SQLSERVER_PASSWORD": "your-password",
+        "SQLSERVER_ENCRYPT": "true",
+        "SQLSERVER_TRUST_CERT": "true"
+      }
+    }
+  }
+}
