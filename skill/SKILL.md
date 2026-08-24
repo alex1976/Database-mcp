@@ -1,11 +1,11 @@
 ---
 name: database-mcp
-description: Use when the user wants to explore a SQL Server database (Azure or on-prem) exposed via the Database-MCP server, or asks to browse schemas/tables/views, inspect table structure, query/filter data, or export data to CSV/TXT. Triggers on requests like "what tables are in the database", "show me the columns of X", "get me the data where...", "export this query to CSV".
+description: Use when the user wants to explore a SQL Server (Azure or on-prem) or PostgreSQL database exposed via the Database-MCP server, or asks to browse schemas/tables/views, inspect table structure, query/filter data, or export data to CSV/TXT. Triggers on requests like "what tables are in the database", "show me the columns of X", "get me the data where...", "export this query to CSV".
 ---
 
 # Database-MCP usage
 
-This skill explains how to use the `database` MCP server (Database-MCP) to explore and extract data from a SQL Server database. The server is **read-only**: every tool only ever runs `SELECT` statements, so it can be used freely without risk of modifying data.
+This skill explains how to use the `database` MCP server (Database-MCP) to explore and extract data from a SQL Server or PostgreSQL database — whichever one this server instance is configured for (`DB_PROVIDER`). The server is **read-only**: every tool only ever runs `SELECT` statements, so it can be used freely without risk of modifying data.
 
 ## Tools available
 
@@ -36,6 +36,6 @@ If a tool call fails, the error message is specific and actionable (e.g. "Invali
 
 ## What NOT to do
 
-- Don't attempt `INSERT`/`UPDATE`/`DELETE`/`DROP`/`ALTER`/`EXEC` or any other data-modifying statement — the server rejects them, and this database connection should be treated as strictly read-only regardless.
+- Don't attempt `INSERT`/`UPDATE`/`DELETE`/`DROP`/`ALTER`/`EXEC`/`CALL`/`COPY` or any other data-modifying statement — the server rejects them, and this database connection should be treated as strictly read-only regardless.
 - Don't paste huge raw result sets into the conversation — use `maxRows` sensibly and switch to `export_data` for bulk extraction.
 - Don't guess schema/table/column names — always confirm via `list_tables`/`list_views`/`describe_table`/`describe_view` first.

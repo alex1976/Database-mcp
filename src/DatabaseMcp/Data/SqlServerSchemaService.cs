@@ -1,13 +1,13 @@
-using Microsoft.Data.SqlClient;
+using System.Data.Common;
 
 namespace DatabaseMcp.Data;
 
 /// <summary>
-/// Read-only navigation of database metadata (schemas, tables, views, columns, keys, indexes)
-/// using SQL Server catalog views. All queries here are fixed and parameterized — no user input
-/// is ever concatenated into SQL text.
+/// SQL Server implementation of <see cref="ISchemaService"/> using SQL Server catalog views
+/// (<c>sys.*</c>). All queries here are fixed and parameterized — no user input is ever
+/// concatenated into SQL text.
 /// </summary>
-public sealed class SchemaService(SqlConnectionFactory connectionFactory)
+public sealed class SqlServerSchemaService(SqlConnectionFactory connectionFactory) : ISchemaService
 {
     private static readonly string[] SystemSchemas =
     [
@@ -26,12 +26,11 @@ public sealed class SchemaService(SqlConnectionFactory connectionFactory)
             ORDER BY s.name;
             """;
 
-        await using var connection = await connectionFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
-        await using var command = new SqlCommand(sql, connection);
-        command.Parameters.AddWithValue("@excluded", string.Join(',', SystemSchemas));
+        await using DbConnection connection = await connectionFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
+        await using DbCommand command = CreateCommand(connection, sql, ("@excluded", string.Join(',', SystemSchemas)));
 
         var results = new List<SchemaInfo>();
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        await using DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
         {
             results.Add(new SchemaInfo(reader.GetString(0)));
@@ -53,12 +52,11 @@ public sealed class SchemaService(SqlConnectionFactory connectionFactory)
             ORDER BY s.name, t.name;
             """;
 
-        await using var connection = await connectionFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
-        await using var command = new SqlCommand(sql, connection);
-        command.Parameters.AddWithValue("@schema", (object?)schema ?? DBNull.Value);
+        await using DbConnection connection = await connectionFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
+        await using DbCommand command = CreateCommand(connection, sql, ("@schema", (object?)schema ?? DBNull.Value));
 
         var results = new List<TableInfo>();
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        await using DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
         {
             results.Add(new TableInfo(reader.GetString(0), reader.GetString(1), reader.GetInt64(2)));
@@ -77,12 +75,11 @@ public sealed class SchemaService(SqlConnectionFactory connectionFactory)
             ORDER BY s.name, v.name;
             """;
 
-        await using var connection = await connectionFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
-        await using var command = new SqlCommand(sql, connection);
-        command.Parameters.AddWithValue("@schema", (object?)schema ?? DBNull.Value);
+        await using DbConnection connection = await connectionFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
+        await using DbCommand command = CreateCommand(connection, sql, ("@schema", (object?)schema ?? DBNull.Value));
 
         var results = new List<ViewInfo>();
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        await using DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
         {
             results.Add(new ViewInfo(reader.GetString(0), reader.GetString(1)));
@@ -95,7 +92,7 @@ public sealed class SchemaService(SqlConnectionFactory connectionFactory)
     {
         string fullName = $"{schema}.{table}";
 
-        await using var connection = await connectionFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
+        await using DbConnection connection = await connectionFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
 
         int? objectId = await ResolveObjectIdAsync(connection, fullName, "U", cancellationToken).ConfigureAwait(false);
         if (objectId is null)
@@ -103,10 +100,10 @@ public sealed class SchemaService(SqlConnectionFactory connectionFactory)
             return null;
         }
 
-        var columns = await ReadColumnsAsync(connection, fullName, cancellationToken).ConfigureAwait(false);
-        var primaryKey = await ReadPrimaryKeyAsync(connection, fullName, cancellationToken).ConfigureAwait(false);
-        var foreignKeys = await ReadForeignKeysAsync(connection, fullName, cancellationToken).ConfigureAwait(false);
-        var indexes = await ReadIndexesAsync(connection, fullName, cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<ColumnInfo> columns = await ReadColumnsAsync(connection, fullName, cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<string> primaryKey = await ReadPrimaryKeyAsync(connection, fullName, cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<ForeignKeyInfo> foreignKeys = await ReadForeignKeysAsync(connection, fullName, cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<IndexInfo> indexes = await ReadIndexesAsync(connection, fullName, cancellationToken).ConfigureAwait(false);
         long approxRowCount = await ReadApproxRowCountAsync(connection, fullName, cancellationToken).ConfigureAwait(false);
 
         return new TableDetails(schema, table, columns, primaryKey, foreignKeys, indexes, approxRowCount);
@@ -116,7 +113,7 @@ public sealed class SchemaService(SqlConnectionFactory connectionFactory)
     {
         string fullName = $"{schema}.{view}";
 
-        await using var connection = await connectionFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
+        await using DbConnection connection = await connectionFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
 
         int? objectId = await ResolveObjectIdAsync(connection, fullName, "V", cancellationToken).ConfigureAwait(false);
         if (objectId is null)
@@ -124,28 +121,25 @@ public sealed class SchemaService(SqlConnectionFactory connectionFactory)
             return null;
         }
 
-        var columns = await ReadColumnsAsync(connection, fullName, cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<ColumnInfo> columns = await ReadColumnsAsync(connection, fullName, cancellationToken).ConfigureAwait(false);
 
         const string definitionSql = "SELECT OBJECT_DEFINITION(OBJECT_ID(@fullName));";
-        await using var definitionCommand = new SqlCommand(definitionSql, connection);
-        definitionCommand.Parameters.AddWithValue("@fullName", fullName);
+        await using DbCommand definitionCommand = CreateCommand(connection, definitionSql, ("@fullName", fullName));
         object? definitionResult = await definitionCommand.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
         string? definition = definitionResult as string;
 
         return new ViewDetails(schema, view, columns, definition);
     }
 
-    private static async Task<int?> ResolveObjectIdAsync(SqlConnection connection, string fullName, string objectType, CancellationToken cancellationToken)
+    private static async Task<int?> ResolveObjectIdAsync(DbConnection connection, string fullName, string objectType, CancellationToken cancellationToken)
     {
         const string sql = "SELECT OBJECT_ID(@fullName, @objectType);";
-        await using var command = new SqlCommand(sql, connection);
-        command.Parameters.AddWithValue("@fullName", fullName);
-        command.Parameters.AddWithValue("@objectType", objectType);
+        await using DbCommand command = CreateCommand(connection, sql, ("@fullName", fullName), ("@objectType", objectType));
         object? result = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
         return result is int id ? id : null;
     }
 
-    private static async Task<IReadOnlyList<ColumnInfo>> ReadColumnsAsync(SqlConnection connection, string fullName, CancellationToken cancellationToken)
+    private static async Task<IReadOnlyList<ColumnInfo>> ReadColumnsAsync(DbConnection connection, string fullName, CancellationToken cancellationToken)
     {
         const string sql = """
             SELECT c.column_id, c.name, ty.name AS DataType, c.max_length, c.precision, c.scale,
@@ -157,11 +151,10 @@ public sealed class SchemaService(SqlConnectionFactory connectionFactory)
             ORDER BY c.column_id;
             """;
 
-        await using var command = new SqlCommand(sql, connection);
-        command.Parameters.AddWithValue("@fullName", fullName);
+        await using DbCommand command = CreateCommand(connection, sql, ("@fullName", fullName));
 
         var results = new List<ColumnInfo>();
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        await using DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
         {
             results.Add(new ColumnInfo(
@@ -180,7 +173,7 @@ public sealed class SchemaService(SqlConnectionFactory connectionFactory)
         return results;
     }
 
-    private static async Task<IReadOnlyList<string>> ReadPrimaryKeyAsync(SqlConnection connection, string fullName, CancellationToken cancellationToken)
+    private static async Task<IReadOnlyList<string>> ReadPrimaryKeyAsync(DbConnection connection, string fullName, CancellationToken cancellationToken)
     {
         const string sql = """
             SELECT c.name
@@ -191,11 +184,10 @@ public sealed class SchemaService(SqlConnectionFactory connectionFactory)
             ORDER BY ic.key_ordinal;
             """;
 
-        await using var command = new SqlCommand(sql, connection);
-        command.Parameters.AddWithValue("@fullName", fullName);
+        await using DbCommand command = CreateCommand(connection, sql, ("@fullName", fullName));
 
         var results = new List<string>();
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        await using DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
         {
             results.Add(reader.GetString(0));
@@ -204,7 +196,7 @@ public sealed class SchemaService(SqlConnectionFactory connectionFactory)
         return results;
     }
 
-    private static async Task<IReadOnlyList<ForeignKeyInfo>> ReadForeignKeysAsync(SqlConnection connection, string fullName, CancellationToken cancellationToken)
+    private static async Task<IReadOnlyList<ForeignKeyInfo>> ReadForeignKeysAsync(DbConnection connection, string fullName, CancellationToken cancellationToken)
     {
         const string sql = """
             SELECT fk.name AS ConstraintName, c1.name AS ColumnName,
@@ -220,11 +212,10 @@ public sealed class SchemaService(SqlConnectionFactory connectionFactory)
             ORDER BY fk.name, fkc.constraint_column_id;
             """;
 
-        await using var command = new SqlCommand(sql, connection);
-        command.Parameters.AddWithValue("@fullName", fullName);
+        await using DbCommand command = CreateCommand(connection, sql, ("@fullName", fullName));
 
         var grouped = new List<(string ConstraintName, string Column, string RefSchema, string RefTable, string RefColumn)>();
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        await using DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
         {
             grouped.Add((reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4)));
@@ -241,7 +232,7 @@ public sealed class SchemaService(SqlConnectionFactory connectionFactory)
             .ToList();
     }
 
-    private static async Task<IReadOnlyList<IndexInfo>> ReadIndexesAsync(SqlConnection connection, string fullName, CancellationToken cancellationToken)
+    private static async Task<IReadOnlyList<IndexInfo>> ReadIndexesAsync(DbConnection connection, string fullName, CancellationToken cancellationToken)
     {
         const string sql = """
             SELECT i.name AS IndexName, i.is_unique, i.is_primary_key, c.name AS ColumnName
@@ -252,11 +243,10 @@ public sealed class SchemaService(SqlConnectionFactory connectionFactory)
             ORDER BY i.name, ic.key_ordinal;
             """;
 
-        await using var command = new SqlCommand(sql, connection);
-        command.Parameters.AddWithValue("@fullName", fullName);
+        await using DbCommand command = CreateCommand(connection, sql, ("@fullName", fullName));
 
         var grouped = new List<(string Name, bool IsUnique, bool IsPrimaryKey, string Column)>();
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        await using DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
         {
             grouped.Add((reader.GetString(0), reader.GetBoolean(1), reader.GetBoolean(2), reader.GetString(3)));
@@ -268,7 +258,7 @@ public sealed class SchemaService(SqlConnectionFactory connectionFactory)
             .ToList();
     }
 
-    private static async Task<long> ReadApproxRowCountAsync(SqlConnection connection, string fullName, CancellationToken cancellationToken)
+    private static async Task<long> ReadApproxRowCountAsync(DbConnection connection, string fullName, CancellationToken cancellationToken)
     {
         const string sql = """
             SELECT ISNULL(SUM(p.rows), 0)
@@ -276,9 +266,23 @@ public sealed class SchemaService(SqlConnectionFactory connectionFactory)
             WHERE p.object_id = OBJECT_ID(@fullName) AND p.index_id IN (0, 1);
             """;
 
-        await using var command = new SqlCommand(sql, connection);
-        command.Parameters.AddWithValue("@fullName", fullName);
+        await using DbCommand command = CreateCommand(connection, sql, ("@fullName", fullName));
         object? result = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
         return result is long value ? value : Convert.ToInt64(result);
+    }
+
+    private static DbCommand CreateCommand(DbConnection connection, string sql, params (string Name, object Value)[] parameters)
+    {
+        DbCommand command = connection.CreateCommand();
+        command.CommandText = sql;
+        foreach ((string name, object value) in parameters)
+        {
+            DbParameter parameter = command.CreateParameter();
+            parameter.ParameterName = name;
+            parameter.Value = value;
+            command.Parameters.Add(parameter);
+        }
+
+        return command;
     }
 }

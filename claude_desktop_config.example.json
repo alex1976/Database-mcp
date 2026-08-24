@@ -1,17 +1,33 @@
 {
   "mcpServers": {
-    "database": {
+    "database-sqlserver": {
       "command": "dotnet",
       "args": [
         "C:\\Users\\username\\source\\repos\\Database-MCP\\src\\DatabaseMcp\\bin\\Release\\net10.0\\DatabaseMcp.dll"
       ],
       "env": {
+        "DB_PROVIDER": "sqlserver",
         "SQLSERVER_HOST": "your-sql-server-instance",
         "SQLSERVER_DATABASE": "your-database",
         "SQLSERVER_USER": "your-username",
         "SQLSERVER_PASSWORD": "your-password",
         "SQLSERVER_ENCRYPT": "true",
         "SQLSERVER_TRUST_CERT": "true"
+      }
+    },
+    "database-postgres": {
+      "command": "dotnet",
+      "args": [
+        "C:\\Users\\username\\source\\repos\\Database-MCP\\src\\DatabaseMcp\\bin\\Release\\net10.0\\DatabaseMcp.dll"
+      ],
+      "env": {
+        "DB_PROVIDER": "postgresql",
+        "POSTGRES_HOST": "your-postgres-host",
+        "POSTGRES_PORT": "5432",
+        "POSTGRES_DATABASE": "your-database",
+        "POSTGRES_USER": "your-username",
+        "POSTGRES_PASSWORD": "your-password",
+        "POSTGRES_SSL_MODE": "Prefer"
       }
     }
   }

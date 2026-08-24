@@ -5,7 +5,7 @@ using ModelContextProtocol.Server;
 namespace DatabaseMcp.Tools;
 
 [McpServerToolType]
-public sealed class SchemaTools(SchemaService schemaService)
+public sealed class SchemaTools(ISchemaService schemaService)
 {
     [McpServerTool(Name = "list_schemas")]
     [Description("Lists user database schemas (excludes built-in system schemas like sys, INFORMATION_SCHEMA, guest).")]

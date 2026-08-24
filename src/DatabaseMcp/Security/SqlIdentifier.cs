@@ -1,11 +1,13 @@
 using System.Text.RegularExpressions;
+using DatabaseMcp.Configuration;
 using ModelContextProtocol;
 
 namespace DatabaseMcp.Security;
 
 /// <summary>
-/// Validates and safely brackets SQL Server identifiers (schema/table/column names) that are
-/// interpolated into dynamically built SQL. Values (filters) must never go through this class —
+/// Validates and safely quotes schema/table/column identifiers that are interpolated into
+/// dynamically built SQL, using the correct quoting style for the target engine (SQL Server
+/// brackets vs. PostgreSQL double quotes). Values (filters) must never go through this class —
 /// they belong in parameters instead.
 /// </summary>
 public static partial class SqlIdentifier
@@ -23,11 +25,16 @@ public static partial class SqlIdentifier
         return identifier;
     }
 
-    /// <summary>Validates and wraps an identifier in brackets, e.g. Name -> [Name].</summary>
-    public static string Bracket(string identifier, string what) =>
-        $"[{Validate(identifier, what).Replace("]", "]]")}]";
+    /// <summary>Validates and quotes an identifier, e.g. Name -> [Name] (SQL Server) or "Name" (PostgreSQL).</summary>
+    public static string Bracket(DatabaseProvider provider, string identifier, string what)
+    {
+        string validated = Validate(identifier, what);
+        return provider == DatabaseProvider.PostgreSql
+            ? $"\"{validated.Replace("\"", "\"\"")}\""
+            : $"[{validated.Replace("]", "]]")}]";
+    }
 
-    /// <summary>Validates and brackets a schema.table pair, e.g. dbo, Orders -> [dbo].[Orders].</summary>
-    public static string BracketQualified(string schema, string table) =>
-        $"{Bracket(schema, "schema")}.{Bracket(table, "table")}";
+    /// <summary>Validates and quotes a schema.table pair, e.g. dbo, Orders -> [dbo].[Orders] or "dbo"."Orders".</summary>
+    public static string BracketQualified(DatabaseProvider provider, string schema, string table) =>
+        $"{Bracket(provider, schema, "schema")}.{Bracket(provider, table, "table")}";
 }

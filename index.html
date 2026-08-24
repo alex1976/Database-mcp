@@ -331,10 +331,10 @@
   <span class="badge">Model Context Protocol · .NET 10</span>
   <h1>Database-MCP</h1>
   <p class="tagline">
-    <span class="en">An MCP server that exposes a SQL Server database — Azure or on-prem — to Claude.
+    <span class="en">An MCP server that exposes a SQL Server (Azure or on-prem) <strong>or PostgreSQL</strong> database to Claude.
     Browse schemas, tables and views, inspect structure, and query or export data as CSV/TXT.
     Read-only, by construction.</span>
-    <span class="it">Un server MCP che espone un database SQL Server — Azure o on-premise — a Claude.
+    <span class="it">Un server MCP che espone un database SQL Server (Azure o on-premise) <strong>o PostgreSQL</strong> a Claude.
     Naviga schemi, tabelle e viste, ispeziona la struttura ed esegui query o esporta dati in CSV/TXT.
     Di sola lettura, per costruzione.</span>
   </p>
@@ -371,16 +371,17 @@
                                    │
                     ┌──────────────┴──────────────┐
                  Tools/                          Data/
-          SchemaTools, DataTools          SchemaService, QueryService
-          (MCP-facing, arg parsing,       (SQL Server access via
-           error translation)             Microsoft.Data.SqlClient)
+          SchemaTools, DataTools          ISchemaService, QueryService
+          (MCP-facing, arg parsing,       (DbConnection/DbCommand —
+           error translation)             provider-agnostic ADO.NET)
                                                    │
                                             Security/
                                     SqlGuard (read-only SELECT guard)
-                                    SqlIdentifier (safe identifier bracketing)
+                                    SqlIdentifier (provider-aware quoting)
                                                    │
-                                              SQL Server
-                                          (Azure SQL or on-prem)</pre>
+                                   ┌───────────────┴───────────────┐
+                            SQL Server                        PostgreSQL
+                       (Azure SQL or on-prem)          (Microsoft.Data.SqlClient / Npgsql)</pre>
     </div>
   </section>
 
@@ -498,8 +499,8 @@
         <div>
           <strong><span class="en">Streaming export, no buffering.</span><span class="it">Esportazione in streaming, senza buffering.</span></strong>
           <p>
-            <span class="en"><code>export_data</code> streams directly from the <code>SqlDataReader</code> to disk, so extracting millions of rows never loads them fully into memory.</span>
-            <span class="it"><code>export_data</code> trasferisce i dati direttamente dal <code>SqlDataReader</code> al disco, così estrarre milioni di righe non le carica mai completamente in memoria.</span>
+            <span class="en"><code>export_data</code> streams directly from the <code>DbDataReader</code> to disk, so extracting millions of rows never loads them fully into memory.</span>
+            <span class="it"><code>export_data</code> trasferisce i dati direttamente dal <code>DbDataReader</code> al disco, così estrarre milioni di righe non le carica mai completamente in memoria.</span>
           </p>
         </div>
       </div>
@@ -525,6 +526,13 @@
         <span class="desc">
           <span class="en">SQL Server connectivity — Azure SQL and on-prem</span>
           <span class="it">Connettività a SQL Server — Azure SQL e on-premise</span>
+        </span>
+      </li>
+      <li>
+        <strong>Npgsql</strong>
+        <span class="desc">
+          <span class="en">PostgreSQL connectivity</span>
+          <span class="it">Connettività a PostgreSQL</span>
         </span>
       </li>
       <li>
@@ -554,9 +562,9 @@
   <section id="status">
     <h2><span class="en">Project status</span><span class="it">Stato del progetto</span></h2>
     <p class="lede">
-      <span class="status-pill"><span class="en">88 / 88 tests passing</span><span class="it">88 / 88 test superati</span></span>
-      <span class="en"> — 78 unit tests plus 10 integration tests exercised against a live SQL Server instance.</span>
-      <span class="it"> — 78 test unitari e 10 test di integrazione eseguiti contro un'istanza reale di SQL Server.</span>
+      <span class="status-pill"><span class="en">101 / 101 tests passing</span><span class="it">101 / 101 test superati</span></span>
+      <span class="en"> — 91 unit tests plus 10 integration tests exercised against both a live SQL Server and a live PostgreSQL instance.</span>
+      <span class="it"> — 91 test unitari e 10 test di integrazione eseguiti sia contro un'istanza reale di SQL Server sia contro una reale di PostgreSQL.</span>
     </p>
     <div class="grid">
       <div class="card">
@@ -567,8 +575,11 @@
         </p>
       </div>
       <div class="card">
-        <h3><span class="dot"></span><span class="en">Configurable via env vars</span><span class="it">Configurabile via variabili d'ambiente</span></h3>
-        <p><code>SQLSERVER_HOST</code>, <code>SQLSERVER_DATABASE</code>, <code>SQLSERVER_USER</code>/<code>PASSWORD</code>, <span class="en">encryption and row-cap settings.</span><span class="it">impostazioni di crittografia e limite righe.</span></p>
+        <h3><span class="dot"></span><span class="en">One database engine per instance</span><span class="it">Un motore database per istanza</span></h3>
+        <p>
+          <span class="en">A <code>DB_PROVIDER</code> switch (<code>sqlserver</code> or <code>postgresql</code>) selects the engine; run two instances to reach both at once.</span>
+          <span class="it">Un interruttore <code>DB_PROVIDER</code> (<code>sqlserver</code> o <code>postgresql</code>) seleziona il motore; avvia due istanze per raggiungerli entrambi.</span>
+        </p>
       </div>
       <div class="card">
         <h3><span class="dot"></span><span class="en">Azure SQL &amp; on-prem</span><span class="it">Azure SQL e on-premise</span></h3>

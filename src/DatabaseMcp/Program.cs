@@ -12,7 +12,11 @@ builder.Logging.AddConsole(options => options.LogToStandardErrorThreshold = LogL
 DatabaseOptions databaseOptions = DatabaseOptions.FromEnvironment();
 builder.Services.AddSingleton(databaseOptions);
 builder.Services.AddSingleton<SqlConnectionFactory>();
-builder.Services.AddSingleton<SchemaService>();
+builder.Services.AddSingleton<ISchemaService>(sp => databaseOptions.Provider switch
+{
+    DatabaseProvider.PostgreSql => new PostgreSqlSchemaService(sp.GetRequiredService<SqlConnectionFactory>()),
+    _ => new SqlServerSchemaService(sp.GetRequiredService<SqlConnectionFactory>()),
+});
 builder.Services.AddSingleton<QueryService>();
 
 builder.Services

@@ -1,4 +1,5 @@
 using System.Text;
+using DatabaseMcp.Configuration;
 using DatabaseMcp.Security;
 using ModelContextProtocol;
 
@@ -11,7 +12,9 @@ public sealed record OrderByColumn(string Column, bool Descending);
 /// <summary>
 /// Builds a parameterized, read-only SELECT from structured inputs (table/columns/filters/order),
 /// so callers who don't want to write raw SQL still get safe, efficient queries. All identifiers
-/// are validated and bracketed via <see cref="SqlIdentifier"/>; all values are bound as parameters.
+/// are validated and quoted via <see cref="SqlIdentifier"/>; all values are bound as parameters.
+/// Row limiting differs by engine: SQL Server uses a leading <c>TOP (n)</c>, PostgreSQL a trailing
+/// <c>LIMIT n</c> (which must come after ORDER BY).
 /// </summary>
 public static class StructuredQueryBuilder
 {
@@ -30,6 +33,7 @@ public static class StructuredQueryBuilder
     };
 
     public static (string Sql, Dictionary<string, object> Parameters) Build(
+        DatabaseProvider provider,
         string schema,
         string table,
         IReadOnlyList<string>? columns,
@@ -37,15 +41,20 @@ public static class StructuredQueryBuilder
         IReadOnlyList<OrderByColumn>? orderBy,
         int top)
     {
-        string tableRef = SqlIdentifier.BracketQualified(schema, table);
+        string tableRef = SqlIdentifier.BracketQualified(provider, schema, table);
         string columnList = columns is { Count: > 0 }
-            ? string.Join(", ", columns.Select(c => SqlIdentifier.Bracket(c, "column")))
+            ? string.Join(", ", columns.Select(c => SqlIdentifier.Bracket(provider, c, "column")))
             : "*";
 
         var parameters = new Dictionary<string, object>();
-        var sql = new StringBuilder()
-            .Append("SELECT TOP (").Append(top).Append(") ").Append(columnList)
-            .Append(" FROM ").Append(tableRef);
+        var sql = new StringBuilder("SELECT ");
+
+        if (provider == DatabaseProvider.SqlServer)
+        {
+            sql.Append("TOP (").Append(top).Append(") ");
+        }
+
+        sql.Append(columnList).Append(" FROM ").Append(tableRef);
 
         if (filters is { Count: > 0 })
         {
@@ -54,7 +63,7 @@ public static class StructuredQueryBuilder
 
             foreach (FilterCondition filter in filters)
             {
-                string columnRef = SqlIdentifier.Bracket(filter.Column, "column");
+                string columnRef = SqlIdentifier.Bracket(provider, filter.Column, "column");
                 if (!Operators.TryGetValue(filter.Operator, out string? sqlOperator))
                 {
                     throw new McpException(
@@ -101,8 +110,13 @@ public static class StructuredQueryBuilder
         if (orderBy is { Count: > 0 })
         {
             IEnumerable<string> orderClauses = orderBy.Select(o =>
-                $"{SqlIdentifier.Bracket(o.Column, "column")} {(o.Descending ? "DESC" : "ASC")}");
+                $"{SqlIdentifier.Bracket(provider, o.Column, "column")} {(o.Descending ? "DESC" : "ASC")}");
             sql.Append(" ORDER BY ").Append(string.Join(", ", orderClauses));
+        }
+
+        if (provider == DatabaseProvider.PostgreSql)
+        {
+            sql.Append(" LIMIT ").Append(top);
         }
 
         sql.Append(';');

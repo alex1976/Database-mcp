@@ -46,7 +46,7 @@ public sealed class DataTools(QueryService queryService, DatabaseOptions options
     {
         OutputFormat parsedFormat = OutputFormatExtensions.Parse(format);
         int top = Math.Clamp(maxRows ?? options.DefaultMaxRows, 1, options.HardMaxRows);
-        (string sql, Dictionary<string, object> parameters) = StructuredQueryBuilder.Build(schema, table, columns, filters, orderBy, top);
+        (string sql, Dictionary<string, object> parameters) = StructuredQueryBuilder.Build(options.Provider, schema, table, columns, filters, orderBy, top);
 
         InlineQueryResult result = await ToolExecution
             .RunAsync(() => queryService.ExecuteInlineAsync(sql, parameters, parsedFormat, top, cancellationToken))

@@ -1,3 +1,4 @@
+using DatabaseMcp.Configuration;
 using DatabaseMcp.Data;
 
 namespace DatabaseMcp.Tests.Integration;
@@ -25,25 +26,29 @@ public class SchemaServiceIntegrationTests(DatabaseFixture fixture) : IClassFixt
     {
         TableDetails? details = await fixture.SchemaService.DescribeTableAsync(fixture.Schema, fixture.TableName);
 
+        // PostgreSQL's information_schema.columns reports VARCHAR as "character varying";
+        // SQL Server's sys.types reports it as "varchar".
+        string expectedNameType = fixture.Options.Provider == DatabaseProvider.PostgreSql ? "character varying" : "varchar";
+
         Assert.NotNull(details);
         Assert.Equal(3, details.ApproxRowCount);
-        Assert.Equal(["Id"], details.PrimaryKeyColumns);
+        Assert.Equal(["id"], details.PrimaryKeyColumns);
 
         Assert.Collection(details.Columns.OrderBy(c => c.OrdinalPosition),
             id =>
             {
-                Assert.Equal("Id", id.Name);
+                Assert.Equal("id", id.Name);
                 Assert.False(id.IsNullable);
             },
             name =>
             {
-                Assert.Equal("Name", name.Name);
-                Assert.Equal("nvarchar", name.DataType);
+                Assert.Equal("name", name.Name);
+                Assert.Equal(expectedNameType, name.DataType);
                 Assert.False(name.IsNullable);
             },
             amount =>
             {
-                Assert.Equal("Amount", amount.Name);
+                Assert.Equal("amount", amount.Name);
                 Assert.True(amount.IsNullable);
             });
     }
@@ -51,7 +56,7 @@ public class SchemaServiceIntegrationTests(DatabaseFixture fixture) : IClassFixt
     [RequiresDatabaseFact]
     public async Task DescribeTableAsync_UnknownTable_ReturnsNull()
     {
-        TableDetails? details = await fixture.SchemaService.DescribeTableAsync(fixture.Schema, "NoSuchTable_Xyz123");
+        TableDetails? details = await fixture.SchemaService.DescribeTableAsync(fixture.Schema, "nosuchtable_xyz123");
 
         Assert.Null(details);
     }

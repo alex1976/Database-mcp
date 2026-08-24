@@ -1,6 +1,8 @@
+using System.Data.Common;
 using System.Text;
 using DatabaseMcp.Configuration;
-using Microsoft.Data.SqlClient;
+using Npgsql;
+using NpgsqlTypes;
 
 namespace DatabaseMcp.Data;
 
@@ -9,8 +11,10 @@ public sealed record InlineQueryResult(string Content, long RowCount, bool Trunc
 public sealed record ExportResult(string FilePath, long RowCount, long FileSizeBytes, OutputFormat Format);
 
 /// <summary>
-/// Executes read-only SELECT statements against SQL Server and streams the results either as an
-/// inline, row-capped CSV/TXT string (for exploration) or as a file on disk (for full extraction).
+/// Executes read-only SELECT statements against the configured database (SQL Server or
+/// PostgreSQL) and streams the results either as an inline, row-capped CSV/TXT string (for
+/// exploration) or as a file on disk (for full extraction). Written against the ADO.NET base
+/// types so it works identically regardless of provider.
 /// </summary>
 public sealed class QueryService(SqlConnectionFactory connectionFactory, DatabaseOptions options)
 {
@@ -23,10 +27,10 @@ public sealed class QueryService(SqlConnectionFactory connectionFactory, Databas
     {
         int effectiveMax = Math.Clamp(requestedMaxRows ?? options.DefaultMaxRows, 1, options.HardMaxRows);
 
-        await using SqlConnection connection = await connectionFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
-        await using SqlCommand command = BuildCommand(connection, sql, parameters);
+        await using DbConnection connection = await connectionFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
+        await using DbCommand command = BuildCommand(connection, sql, parameters);
 
-        await using SqlDataReader reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        await using DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         using var stringWriter = new StringWriter();
         WriteResult result = await DelimitedWriter.WriteAsync(reader, stringWriter, format.Delimiter(), effectiveMax, cancellationToken)
             .ConfigureAwait(false);
@@ -44,10 +48,10 @@ public sealed class QueryService(SqlConnectionFactory connectionFactory, Databas
         Directory.CreateDirectory(options.ExportDirectory);
         string fullPath = ResolveExportPath(requestedFileName, format);
 
-        await using SqlConnection connection = await connectionFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
-        await using SqlCommand command = BuildCommand(connection, sql, parameters);
+        await using DbConnection connection = await connectionFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
+        await using DbCommand command = BuildCommand(connection, sql, parameters);
 
-        await using SqlDataReader reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        await using DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         await using FileStream fileStream = new(fullPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 64 * 1024, useAsync: true);
         await using var streamWriter = new StreamWriter(fileStream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
 
@@ -59,14 +63,34 @@ public sealed class QueryService(SqlConnectionFactory connectionFactory, Databas
         return new ExportResult(fullPath, result.RowsWritten, fileSize, format);
     }
 
-    private SqlCommand BuildCommand(SqlConnection connection, string sql, IReadOnlyDictionary<string, object>? parameters)
+    private DbCommand BuildCommand(DbConnection connection, string sql, IReadOnlyDictionary<string, object>? parameters)
     {
-        var command = new SqlCommand(sql, connection) { CommandTimeout = options.CommandTimeoutSeconds };
+        DbCommand command = connection.CreateCommand();
+        command.CommandText = sql;
+        command.CommandTimeout = options.CommandTimeoutSeconds;
+
         if (parameters is not null)
         {
             foreach ((string name, object value) in parameters)
             {
-                command.Parameters.AddWithValue(name, value);
+                DbParameter parameter = command.CreateParameter();
+                parameter.ParameterName = name;
+                parameter.Value = value;
+
+                // StructuredQueryBuilder only ever produces string-valued filter parameters (the
+                // MCP tool arguments are all strings). Npgsql normally binds a string parameter as
+                // "text", which blocks PostgreSQL's usual implicit cast (e.g. comparing it to a
+                // numeric/date column fails with "operator does not exist: numeric > text") even
+                // though the equivalent literal ('5' > amount) would work fine. Declaring it
+                // "Unknown" instead makes Npgsql send it the same way a literal is sent, letting
+                // PostgreSQL infer the type from context — matching SQL Server's implicit
+                // conversion behavior for the same query.
+                if (parameter is NpgsqlParameter npgsqlParameter && value is string)
+                {
+                    npgsqlParameter.NpgsqlDbType = NpgsqlDbType.Unknown;
+                }
+
+                command.Parameters.Add(parameter);
             }
         }
 
