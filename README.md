@@ -1,6 +1,6 @@
 # Database-MCP
 
-An MCP (Model Context Protocol) server that exposes a SQL Server (Azure SQL or on-prem) **or PostgreSQL** database to Claude: browse schemas/tables/views, inspect table and view metadata, and query or export data as CSV/TXT — all read-only. The server targets exactly one database at a time; a configuration switch (`DB_PROVIDER`) selects which engine that is.
+An MCP (Model Context Protocol) server that exposes a **SQL Server** (Azure SQL or on-prem) or **PostgreSQL** database to Claude: browse schemas/tables/views, inspect table and view metadata, and query or export data as CSV/TXT — all read-only. The server targets exactly one database at a time; a configuration switch (`DB_PROVIDER`) selects which engine that is.
 
 ## Architecture
 
