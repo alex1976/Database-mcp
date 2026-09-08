@@ -2,6 +2,8 @@
 
 An MCP (Model Context Protocol) server that exposes a **SQL Server** (Azure SQL or on-prem) or **PostgreSQL** database to Claude: browse schemas/tables/views, inspect table and view metadata, and query or export data as CSV/TXT — all read-only. The server targets exactly one database at a time; a configuration switch (`DB_PROVIDER`) selects which engine that is.
 
+![Database-MCP project overview](docs/database-mcp-architecture.svg)
+
 ## Architecture
 
 The server is a single .NET console application that speaks MCP over **stdio**. Claude (or any MCP client) launches the process, and JSON-RPC messages flow over stdin/stdout; all logging goes to stderr so it never corrupts the protocol stream.

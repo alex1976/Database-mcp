@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <defs>
+    <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="6" flood-color="#0b0b0b" flood-opacity="0.08"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#898781"/>
+    </marker>
+  </defs>
+
+  <!-- page plane -->
+  <rect x="0" y="0" width="1600" height="900" fill="#f9f9f7"/>
+
+  <!-- title block -->
+  <text x="60" y="72" font-size="15" font-weight="600" letter-spacing="3" fill="#898781">MODEL CONTEXT PROTOCOL SERVER</text>
+  <text x="60" y="126" font-size="52" font-weight="700" fill="#0b0b0b">Database-MCP</text>
+  <text x="60" y="160" font-size="22" fill="#52514e">Read-only access to SQL Server &amp; PostgreSQL for Claude</text>
+
+  <!-- ===================== Claude client box ===================== -->
+  <g filter="url(#soft-shadow)">
+    <rect x="60" y="410" width="280" height="260" rx="16" fill="#fcfcfb" stroke="rgba(11,11,11,0.10)"/>
+  </g>
+  <rect x="60" y="410" width="10" height="260" rx="5" fill="#2a78d6"/>
+  <!-- sparkle icon -->
+  <path d="M200,460 L208,484 L232,492 L208,500 L200,524 L192,500 L168,492 L192,484 Z" fill="#2a78d6"/>
+  <text x="200" y="558" font-size="24" font-weight="700" fill="#0b0b0b" text-anchor="middle">Claude</text>
+  <text x="200" y="586" font-size="16" fill="#52514e" text-anchor="middle">MCP client</text>
+  <text x="200" y="612" font-size="14" fill="#898781" text-anchor="middle">natural-language requests</text>
+
+  <!-- arrow Claude <-> Server -->
+  <line x1="342" y1="540" x2="458" y2="540" stroke="#898781" stroke-width="2.5" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text x="400" y="518" font-size="15" fill="#52514e" text-anchor="middle">stdio · JSON-RPC</text>
+
+  <!-- ===================== Database-MCP server box ===================== -->
+  <g filter="url(#soft-shadow)">
+    <rect x="460" y="250" width="620" height="580" rx="18" fill="#fcfcfb" stroke="rgba(11,11,11,0.10)"/>
+  </g>
+  <text x="770" y="300" font-size="24" font-weight="700" fill="#0b0b0b" text-anchor="middle">Database-MCP Server</text>
+  <text x="770" y="328" font-size="15" fill="#52514e" text-anchor="middle">single .NET 10 process · stdio transport</text>
+
+  <!-- read-only badge -->
+  <g transform="translate(1000,222)">
+    <rect x="-90" y="-16" width="180" height="34" rx="17" fill="#0ca30c"/>
+    <path d="M-64,-4 L-64,3 Q-64,10 -57,13 Q-50,10 -50,3 L-50,-4 L-57,-7 Z" fill="#ffffff"/>
+    <path d="M-60,2 L-58,5 L-53,-1" stroke="#0ca30c" stroke-width="1.6" fill="none"/>
+    <text x="-38" y="6" font-size="14" font-weight="700" fill="#ffffff">READ-ONLY</text>
+  </g>
+
+  <!-- Lane 1: Tools -->
+  <rect x="480" y="360" width="580" height="122" rx="12" fill="#f9f9f7" stroke="#e1e0d9"/>
+  <rect x="480" y="360" width="8" height="122" rx="4" fill="#2a78d6"/>
+  <g transform="translate(520,405)">
+    <path d="M0,0 L-10,10 L0,20 M20,0 L30,10 L20,20" stroke="#2a78d6" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="575" y="405" font-size="19" font-weight="700" fill="#0b0b0b">Tools</text>
+  <text x="575" y="430" font-size="15" fill="#52514e">SchemaTools · DataTools — the MCP-facing surface</text>
+  <text x="575" y="452" font-size="14" fill="#898781">8 tools: browse, describe, query, export</text>
+
+  <!-- Lane 2: Data -->
+  <rect x="480" y="502" width="580" height="122" rx="12" fill="#f9f9f7" stroke="#e1e0d9"/>
+  <rect x="480" y="502" width="8" height="122" rx="4" fill="#1baf7a"/>
+  <g transform="translate(520,547)">
+    <path d="M-15,-9 a15,5 0 1,0 30,0 a15,5 0 1,0 -30,0" fill="none" stroke="#1baf7a" stroke-width="2.5"/>
+    <path d="M-15,-9 v18 a15,5 0 0,0 30,0 v-18" fill="none" stroke="#1baf7a" stroke-width="2.5"/>
+  </g>
+  <text x="575" y="547" font-size="19" font-weight="700" fill="#0b0b0b">Data</text>
+  <text x="575" y="572" font-size="15" fill="#52514e">ISchemaService · QueryService — plain ADO.NET</text>
+  <text x="575" y="594" font-size="14" fill="#898781">Streamed DbDataReader — no ORM, no buffering</text>
+
+  <!-- Lane 3: Security -->
+  <rect x="480" y="644" width="580" height="122" rx="12" fill="#f9f9f7" stroke="#e1e0d9"/>
+  <rect x="480" y="644" width="8" height="122" rx="4" fill="#0ca30c"/>
+  <g transform="translate(520,689)">
+    <path d="M0,-14 L14,-8 L14,4 Q14,16 0,22 Q-14,16 -14,4 L-14,-8 Z" fill="none" stroke="#0ca30c" stroke-width="2.5"/>
+    <path d="M-6,3 L-1,9 L8,-4" fill="none" stroke="#0ca30c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="575" y="689" font-size="19" font-weight="700" fill="#0b0b0b">Security</text>
+  <text x="575" y="714" font-size="15" fill="#52514e">SqlGuard · SqlIdentifier — enforced in code</text>
+  <text x="575" y="736" font-size="14" fill="#898781">Only SELECT/WITH · parameterized · quoted</text>
+
+  <!-- ===================== Databases ===================== -->
+  <!-- arrows server -> databases -->
+  <path d="M1082,500 L1176,415" stroke="#898781" stroke-width="2.5" fill="none" marker-end="url(#arrow)"/>
+  <path d="M1082,580 L1176,665" stroke="#898781" stroke-width="2.5" fill="none" marker-end="url(#arrow)"/>
+  <text x="1129" y="505" font-size="14" fill="#52514e" text-anchor="middle">SELECT only</text>
+  <g transform="translate(1129,522)">
+    <rect x="-11" y="6" width="22" height="16" rx="3" fill="none" stroke="#52514e" stroke-width="2"/>
+    <path d="M-6,6 v-6 a6,6 0 0,1 12,0 v6" fill="none" stroke="#52514e" stroke-width="2"/>
+  </g>
+
+  <!-- SQL Server box -->
+  <g filter="url(#soft-shadow)">
+    <rect x="1180" y="320" width="340" height="190" rx="16" fill="#fcfcfb" stroke="rgba(11,11,11,0.10)"/>
+  </g>
+  <rect x="1180" y="320" width="340" height="8" rx="4" fill="#eb6834"/>
+  <g transform="translate(1210,378)">
+    <path d="M0,-9 a14,5 0 1,0 28,0 a14,5 0 1,0 -28,0" fill="none" stroke="#eb6834" stroke-width="2.5"/>
+    <path d="M0,-9 v26 a14,5 0 0,0 28,0 v-26" fill="none" stroke="#eb6834" stroke-width="2.5"/>
+  </g>
+  <text x="1258" y="386" font-size="20" font-weight="700" fill="#0b0b0b">SQL Server</text>
+  <text x="1258" y="410" font-size="14" fill="#52514e">Azure SQL or on-prem</text>
+  <text x="1258" y="430" font-size="13" fill="#898781">Microsoft.Data.SqlClient</text>
+  <text x="1350" y="492" font-size="12" fill="#898781" text-anchor="middle">DB_PROVIDER=sqlserver (default)</text>
+
+  <!-- PostgreSQL box -->
+  <g filter="url(#soft-shadow)">
+    <rect x="1180" y="570" width="340" height="190" rx="16" fill="#fcfcfb" stroke="rgba(11,11,11,0.10)"/>
+  </g>
+  <rect x="1180" y="570" width="340" height="8" rx="4" fill="#4a3aa7"/>
+  <g transform="translate(1210,628)">
+    <path d="M0,-9 a14,5 0 1,0 28,0 a14,5 0 1,0 -28,0" fill="none" stroke="#4a3aa7" stroke-width="2.5"/>
+    <path d="M0,-9 v26 a14,5 0 0,0 28,0 v-26" fill="none" stroke="#4a3aa7" stroke-width="2.5"/>
+  </g>
+  <text x="1258" y="636" font-size="20" font-weight="700" fill="#0b0b0b">PostgreSQL</text>
+  <text x="1258" y="660" font-size="14" fill="#52514e">Self-hosted or managed</text>
+  <text x="1258" y="680" font-size="13" fill="#898781">Npgsql</text>
+  <text x="1350" y="742" font-size="12" fill="#898781" text-anchor="middle">DB_PROVIDER=postgresql</text>
+
+  <!-- footer caption -->
+  <text x="60" y="860" font-size="14" fill="#898781">One process, one database at a time · every path enforces a single read-only SELECT/WITH statement</text>
+</svg>
