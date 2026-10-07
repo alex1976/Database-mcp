@@ -4,6 +4,8 @@ An MCP (Model Context Protocol) server that exposes a **SQL Server** (Azure SQL 
 
 ![Database-MCP project overview](docs/database-mcp-architecture.svg)
 
+[![Listed on mcpservers.org](https://mcpservers.org/badge.svg)](https://mcpservers.org/servers/alex1976-github-io-database-mcp)
+
 ## Architecture
 
 The server is a single .NET console application that speaks MCP over **stdio**. Claude (or any MCP client) launches the process, and JSON-RPC messages flow over stdin/stdout; all logging goes to stderr so it never corrupts the protocol stream.
