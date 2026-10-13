@@ -19,13 +19,14 @@ This skill explains how to use the `database` MCP server (Database-MCP) to explo
 | `query_data` | Fetch rows from a single table/view using structured filters/columns/order — **prefer this over `execute_sql` for simple lookups** |
 | `execute_sql` | Run a raw `SELECT` (joins, aggregates, CTEs) when structured `query_data` isn't expressive enough |
 | `export_data` | Stream the **full** result of a `SELECT` to a CSV/TXT file on disk — use for large exports instead of `execute_sql`/`query_data` |
+| `export_table_data` | Stream the **full** result of a table/view with the structured arguments of `query_data` (no row cap) to a CSV/TXT file — use for large extracts from one table instead of `query_data` |
 
 ## Recommended workflow
 
 1. **Orient first.** Before writing any query, call `list_schemas` and `list_tables`/`list_views` to see what actually exists — never guess table or column names.
 2. **Inspect before querying.** Call `describe_table` (or `describe_view`) on the relevant object to confirm exact column names/types and relationships (foreign keys) before building a query. This avoids trial-and-error against `execute_sql`.
 3. **Prefer `query_data` for simple asks.** If the user wants rows from one table with basic filters/sorting/limit, use `query_data` with structured `columns`/`filters`/`orderBy` instead of writing SQL — it's safer and the filter/operator format is self-documenting.
-   - Filter operators: `eq`, `ne`, `gt`, `ge`, `lt`, `le`, `like`, `in` (comma-separated values), `isnull`, `isnotnull`.
+   - Filter operators: `eq`, `ne`, `gt`, `ge`, `lt`, `le`, `like`, `in` (comma-separated values), `isnull`, `isnotnull`. To test for NULL, use `isnull`/`isnotnull` (or `eq`/`ne` with no value); comparisons with no value are rejected.
 4. **Use `execute_sql` for anything relational.** Joins, aggregations, `GROUP BY`, window functions, or multi-table logic go through `execute_sql`. Only a single `SELECT` (optionally with a leading `WITH` CTE) is accepted — no DML/DDL, no `EXEC`, no multiple statements.
 5. **Cap results, then export if needed.** `execute_sql`/`query_data` return results inline as CSV or TXT, capped at a row limit (to protect context) and report `truncated: true` if more rows exist. If the user needs the *complete* result set (large tables, full reports), switch to `export_data` with the same `SELECT` — it streams every row to a file and returns the file path, row count, and size instead of inline content.
 6. **Pick the format.** Both inline and export tools accept `format: "csv"` (default) or `"txt"` (tab-delimited). Use the format the user asked for, or CSV by default.

@@ -1,6 +1,7 @@
 using System.Data.Common;
 using System.Text;
 using DatabaseMcp.Configuration;
+using ModelContextProtocol;
 using Npgsql;
 using NpgsqlTypes;
 
@@ -28,7 +29,7 @@ public sealed class QueryService(SqlConnectionFactory connectionFactory, Databas
         int effectiveMax = Math.Clamp(requestedMaxRows ?? options.DefaultMaxRows, 1, options.HardMaxRows);
 
         await using DbConnection connection = await connectionFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
-        await using DbCommand command = BuildCommand(connection, sql, parameters);
+        await using DbCommand command = BuildCommand(connection, sql, parameters, options.CommandTimeoutSeconds);
 
         await using DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         using var stringWriter = new StringWriter();
@@ -48,11 +49,19 @@ public sealed class QueryService(SqlConnectionFactory connectionFactory, Databas
         Directory.CreateDirectory(options.ExportDirectory);
         string fullPath = ResolveExportPath(requestedFileName, format);
 
+        // Refuse rather than overwrite: an earlier export with the same name would be silently lost.
+        // Checked before querying so a rejected name costs nothing on the database.
+        if (File.Exists(fullPath))
+        {
+            throw new McpException($"An export named '{Path.GetFileName(fullPath)}' already exists. Choose a different fileName.");
+        }
+
         await using DbConnection connection = await connectionFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
-        await using DbCommand command = BuildCommand(connection, sql, parameters);
+        await using DbCommand command = BuildCommand(connection, sql, parameters, options.ExportCommandTimeoutSeconds);
 
         await using DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
-        await using FileStream fileStream = new(fullPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 64 * 1024, useAsync: true);
+        // CreateNew is the race-safe form of the check above: it fails if another writer created the file in between.
+        await using FileStream fileStream = new(fullPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, bufferSize: 64 * 1024, useAsync: true);
         await using var streamWriter = new StreamWriter(fileStream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
 
         WriteResult result = await DelimitedWriter.WriteAsync(reader, streamWriter, format.Delimiter(), maxRows: null, cancellationToken)
@@ -63,11 +72,11 @@ public sealed class QueryService(SqlConnectionFactory connectionFactory, Databas
         return new ExportResult(fullPath, result.RowsWritten, fileSize, format);
     }
 
-    private DbCommand BuildCommand(DbConnection connection, string sql, IReadOnlyDictionary<string, object>? parameters)
+    private static DbCommand BuildCommand(DbConnection connection, string sql, IReadOnlyDictionary<string, object>? parameters, int commandTimeoutSeconds)
     {
         DbCommand command = connection.CreateCommand();
         command.CommandText = sql;
-        command.CommandTimeout = options.CommandTimeoutSeconds;
+        command.CommandTimeout = commandTimeoutSeconds;
 
         if (parameters is not null)
         {

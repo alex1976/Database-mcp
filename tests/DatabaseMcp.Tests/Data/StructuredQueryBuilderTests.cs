@@ -126,6 +126,46 @@ public class StructuredQueryBuilderTests
         Assert.Empty(parameters);
     }
 
+    [Theory]
+    [InlineData("eq", "IS NULL")]
+    [InlineData("ne", "IS NOT NULL")]
+    public void Build_EqualityWithNullValue_EmitsNullTest(string op, string expectedSql)
+    {
+        // "= NULL" never matches, so a null value must become a NULL test instead.
+        (string sql, Dictionary<string, object> parameters) = StructuredQueryBuilder.Build(
+            DatabaseProvider.SqlServer, "dbo", "Orders", columns: null,
+            filters: [new FilterCondition("DeletedAt", op, null)],
+            orderBy: null, top: 10);
+
+        Assert.Contains($"WHERE [DeletedAt] {expectedSql}", sql);
+        Assert.Empty(parameters);
+    }
+
+    [Theory]
+    [InlineData("gt")]
+    [InlineData("like")]
+    public void Build_ComparisonWithNullValue_Throws(string op)
+    {
+        var ex = Assert.Throws<McpException>(() => StructuredQueryBuilder.Build(
+            DatabaseProvider.SqlServer, "dbo", "Orders", columns: null,
+            filters: [new FilterCondition("Amount", op, null)],
+            orderBy: null, top: 10));
+
+        Assert.Contains("requires a value", ex.Message);
+    }
+
+    [Theory]
+    [InlineData(DatabaseProvider.SqlServer, "SELECT * FROM [dbo].[Orders];")]
+    [InlineData(DatabaseProvider.PostgreSql, "SELECT * FROM \"dbo\".\"Orders\";")]
+    public void Build_WithoutTop_EmitsNoRowLimit(DatabaseProvider provider, string expectedSql)
+    {
+        // Full exports pass top: null so neither TOP (SQL Server) nor LIMIT (PostgreSQL) is added.
+        (string sql, _) = StructuredQueryBuilder.Build(
+            provider, "dbo", "Orders", columns: null, filters: null, orderBy: null, top: null);
+
+        Assert.Equal(expectedSql, sql);
+    }
+
     [Fact]
     public void Build_WithUnsupportedOperator_Throws()
     {

@@ -90,7 +90,7 @@ If `SQLSERVER_USER`/`SQLSERVER_PASSWORD` are omitted, the connection falls back 
 | `POSTGRES_PORT` | no | `5432` | Port |
 | `POSTGRES_USER` | no | — | Login role |
 | `POSTGRES_PASSWORD` | no | — | Login password |
-| `POSTGRES_SSL_MODE` | no | `Prefer` | libpq-style SSL mode: `Disable`/`Prefer`/`Require`/`VerifyCA`/`VerifyFull`. To trust a self-signed certificate, use `Require` (encrypts without validating the chain) rather than `VerifyCA`/`VerifyFull` — Npgsql no longer has a separate "trust server certificate" switch. |
+| `POSTGRES_SSL_MODE` | no | `Prefer` | libpq-style SSL mode: `Disable`/`Prefer`/`Require`/`VerifyCA`/`VerifyFull` (any other value stops the server at startup). To trust a self-signed certificate, use `Require` (encrypts without validating the chain) rather than `VerifyCA`/`VerifyFull` — Npgsql no longer has a separate "trust server certificate" switch. |
 
 ### Shared (both engines)
 
@@ -100,7 +100,8 @@ These accept a generic `DB_*` name; the old provider-prefixed name (`SQLSERVER_*
 |---|---|---|
 | `DB_DEFAULT_MAX_ROWS` | `1000` | Default row cap for inline query results |
 | `DB_HARD_MAX_ROWS` | `10000` | Absolute row cap for inline results (protects the conversation context) |
-| `DB_COMMAND_TIMEOUT_SECONDS` | `30` | Query command timeout |
+| `DB_COMMAND_TIMEOUT_SECONDS` | `30` | Query command timeout for inline queries |
+| `DB_EXPORT_TIMEOUT_SECONDS` | `600` | Command timeout for `export_data`, which can legitimately run much longer. `0` means no timeout |
 | `DB_CONNECT_TIMEOUT_SECONDS` | `15` | Connection timeout |
 | `DB_EXPORT_DIR` | `./exports` next to the executable | Directory where `export_data` writes files |
 
@@ -111,7 +112,7 @@ These accept a generic `DB_*` name; the old provider-prefixed name (`SQLSERVER_*
 - **`execute_sql`** and **`export_data`** accept raw SQL but reject anything that isn't a single `SELECT` (optionally with a leading `WITH` CTE) via `SqlGuard` — no `INSERT`/`UPDATE`/`DELETE`/`MERGE`/DDL/`EXEC`/`CALL`/`COPY`/multiple statements/etc. The keyword denylist covers dangerous surface from both SQL Server (`xp_cmdshell`, `OPENROWSET`, ...) and PostgreSQL (`COPY`, `dblink`, `pg_read_file`, ...).
 - **`query_data`** never sees raw SQL from the caller: it builds a parameterized `SELECT` from structured arguments, with identifiers validated and quoted and all filter values bound as parameters (no injection surface).
 - Inline results (`execute_sql`, `query_data`) are capped at a configurable row count (`DB_HARD_MAX_ROWS`) to protect the LLM's context window; the response reports whether the result was `truncated`.
-- `export_data` has no row cap — it streams the full result set directly from the `DbDataReader` to a file on disk, so extracting millions of rows doesn't require buffering them in memory.
+- `export_data` has no row cap — it streams the full result set directly from the `DbDataReader` to a file on disk, so extracting millions of rows doesn't require buffering them in memory. It never overwrites an existing file: a `fileName` that is already in use is rejected, and the check runs before the query.
 
 ## MCP tools
 
@@ -125,8 +126,9 @@ These accept a generic `DB_*` name; the old provider-prefixed name (`SQLSERVER_*
 | `execute_sql` | Run a raw read-only `SELECT`/`WITH` statement; returns CSV/TXT inline, row-capped |
 | `query_data` | Query a table/view via structured columns/filters/order/limit (no raw SQL); returns CSV/TXT inline, row-capped |
 | `export_data` | Run a raw read-only `SELECT`/`WITH` statement and stream the **full** result to a CSV/TXT file on disk |
+| `export_table_data` | Stream the **full** result of a structured table/view query (same columns/filters/order arguments as `query_data`, no row cap) to a CSV/TXT file on disk |
 
-Filter operators for `query_data`: `eq`, `ne`, `gt`, `ge`, `lt`, `le`, `like`, `in` (comma-separated value list), `isnull`, `isnotnull`.
+Filter operators for `query_data`: `eq`, `ne`, `gt`, `ge`, `lt`, `le`, `like`, `in` (comma-separated value list), `isnull`, `isnotnull`. An `eq` or `ne` filter with no value becomes `IS NULL` / `IS NOT NULL`; any other operator without a value is rejected, since `= NULL` would never match.
 
 ## Building and running
 
@@ -145,6 +147,8 @@ Tests live in `tests/DatabaseMcp.Tests` (xUnit) and cover the safety-critical, p
 - `StructuredQueryBuilderTests` — the structured `query_data` SQL builder produces correct, parameterized SQL for every filter operator and both providers (`TOP` vs. `LIMIT`, bracket vs. double-quote identifiers) and rejects unsafe identifiers
 - `OutputFormatExtensionsTests` — CSV/TXT format parsing
 - `DelimitedWriterTests` — CSV/TSV streaming, quoting/escaping, `NULL` handling, row-cap truncation (using an in-memory `DataTable.CreateDataReader()`, no real connection needed)
+- `DatabaseOptionsTests` — `POSTGRES_SSL_MODE` is validated at startup (unknown values fail with the list of valid ones)
+- `QueryServiceExportTests` — `export_data` refuses to overwrite an existing file, before any connection is attempted
 
 ```powershell
 dotnet test

@@ -1,5 +1,6 @@
 using System.Data;
 using System.Data.Common;
+using System.Text;
 using DatabaseMcp.Data;
 
 namespace DatabaseMcp.Tests.Data;
@@ -142,5 +143,61 @@ public class DelimitedWriterTests
         Assert.Equal(0, result.RowsWritten);
         Assert.False(result.Truncated);
         Assert.Equal("Id\n", writer.ToString());
+    }
+
+    [Fact]
+    public async Task WriteAsync_LargeResultSet_ChunkedOutputIsIdenticalToRowByRowOutput()
+    {
+        // Enough rows to cross the internal flush threshold several times, so chunk boundaries are exercised.
+        const int rowCount = 20_000;
+        DataTable table = BuildTable(("Id", typeof(int)), ("Name", typeof(string)));
+        for (int i = 1; i <= rowCount; i++)
+        {
+            table.Rows.Add(i, $"name,{i}");
+        }
+
+        using DbDataReader reader = CreateReader(table);
+        using var writer = new StringWriter();
+
+        WriteResult result = await DelimitedWriter.WriteAsync(reader, writer, ',', maxRows: null, CancellationToken.None);
+
+        var expected = new StringBuilder("Id,Name\n");
+        for (int i = 1; i <= rowCount; i++)
+        {
+            expected.Append(i).Append(",\"name,").Append(i).Append("\"\n");
+        }
+
+        Assert.Equal(rowCount, result.RowsWritten);
+        Assert.Equal(expected.ToString(), writer.ToString());
+    }
+
+    [Fact]
+    public async Task WriteAsync_FormatsNumbersInvariantlyAndEscapesHeaderNames()
+    {
+        DataTable table = new();
+        table.Columns.Add("Col,One", typeof(decimal));
+        table.Columns.Add("Col\"Two", typeof(double));
+        table.Rows.Add(1.50m, 0.25d);
+
+        using DbDataReader reader = CreateReader(table);
+        using var writer = new StringWriter();
+
+        await DelimitedWriter.WriteAsync(reader, writer, ',', maxRows: null, CancellationToken.None);
+
+        Assert.Equal("\"Col,One\",\"Col\"\"Two\"\n1.50,0.25\n", writer.ToString());
+    }
+
+    [Fact]
+    public async Task WriteAsync_FormatsDateTimeOffsetWithOffset()
+    {
+        DataTable table = BuildTable(("When", typeof(DateTimeOffset)));
+        table.Rows.Add(new DateTimeOffset(2026, 8, 24, 13, 5, 30, 250, TimeSpan.FromHours(2)));
+
+        using DbDataReader reader = CreateReader(table);
+        using var writer = new StringWriter();
+
+        await DelimitedWriter.WriteAsync(reader, writer, ',', maxRows: null, CancellationToken.None);
+
+        Assert.Equal("When\n2026-08-24 13:05:30.250+02:00\n", writer.ToString());
     }
 }

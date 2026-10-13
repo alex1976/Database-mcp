@@ -62,6 +62,35 @@ public sealed class DataTools(QueryService queryService, DatabaseOptions options
         };
     }
 
+    [McpServerTool(Name = "export_table_data")]
+    [Description("Exports a table or view to a CSV or TXT file in the server's export directory, using the same structured arguments as query_data (columns, filters, ordering) but with no row cap. Use this for large extracts from one table or view; use export_data for raw SQL. Returns the file path, row count, and file size rather than inline content.")]
+    public async Task<object> ExportTableDataAsync(
+        [Description("Schema name, e.g. 'dbo'.")] string schema,
+        [Description("Table or view name.")] string table,
+        [Description("Columns to export. Omit or leave empty to export all columns.")] IReadOnlyList<string>? columns = null,
+        [Description("Filter conditions, combined with AND.")] IReadOnlyList<FilterCondition>? filters = null,
+        [Description("Columns to sort by, applied in the given order.")] IReadOnlyList<OrderByColumn>? orderBy = null,
+        [Description("Output format: 'csv' or 'txt'. Defaults to 'csv'.")] string? format = null,
+        [Description("Optional file name (without extension). A timestamped name is generated if omitted. Existing files are never overwritten.")] string? fileName = null,
+        CancellationToken cancellationToken = default)
+    {
+        OutputFormat parsedFormat = OutputFormatExtensions.Parse(format);
+        (string sql, Dictionary<string, object> parameters) = StructuredQueryBuilder.Build(options.Provider, schema, table, columns, filters, orderBy, top: null);
+
+        ExportResult result = await ToolExecution
+            .RunAsync(() => queryService.ExportAsync(sql, parameters, parsedFormat, fileName, cancellationToken))
+            .ConfigureAwait(false);
+
+        return new
+        {
+            filePath = result.FilePath,
+            rowCount = result.RowCount,
+            fileSizeBytes = result.FileSizeBytes,
+            format = parsedFormat.ToString().ToLowerInvariant(),
+            generatedSql = sql,
+        };
+    }
+
     [McpServerTool(Name = "export_data")]
     [Description("Executes a read-only SQL SELECT statement and streams the FULL result set (no row cap) to a CSV or TXT file in the server's export directory — use this for large data extraction instead of execute_sql/query_data. Returns the file path, row count, and file size rather than inline content.")]
     public async Task<object> ExportDataAsync(

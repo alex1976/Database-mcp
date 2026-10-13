@@ -14,7 +14,7 @@ public sealed record OrderByColumn(string Column, bool Descending);
 /// so callers who don't want to write raw SQL still get safe, efficient queries. All identifiers
 /// are validated and quoted via <see cref="SqlIdentifier"/>; all values are bound as parameters.
 /// Row limiting differs by engine: SQL Server uses a leading <c>TOP (n)</c>, PostgreSQL a trailing
-/// <c>LIMIT n</c> (which must come after ORDER BY).
+/// <c>LIMIT n</c> (which must come after ORDER BY). A null <c>top</c> adds no limit at all, for full exports.
 /// </summary>
 public static class StructuredQueryBuilder
 {
@@ -39,7 +39,7 @@ public static class StructuredQueryBuilder
         IReadOnlyList<string>? columns,
         IReadOnlyList<FilterCondition>? filters,
         IReadOnlyList<OrderByColumn>? orderBy,
-        int top)
+        int? top)
     {
         string tableRef = SqlIdentifier.BracketQualified(provider, schema, table);
         string columnList = columns is { Count: > 0 }
@@ -49,9 +49,9 @@ public static class StructuredQueryBuilder
         var parameters = new Dictionary<string, object>();
         var sql = new StringBuilder("SELECT ");
 
-        if (provider == DatabaseProvider.SqlServer)
+        if (provider == DatabaseProvider.SqlServer && top is int sqlServerTop)
         {
-            sql.Append("TOP (").Append(top).Append(") ");
+            sql.Append("TOP (").Append(sqlServerTop).Append(") ");
         }
 
         sql.Append(columnList).Append(" FROM ").Append(tableRef);
@@ -97,8 +97,21 @@ public static class StructuredQueryBuilder
                         break;
 
                     default:
+                        if (filter.Value is null)
+                        {
+                            // "= NULL" and "> NULL" never match, so a missing value is either a null test or an error.
+                            clauses.Add(filter.Operator.ToLowerInvariant() switch
+                            {
+                                "eq" => $"{columnRef} IS NULL",
+                                "ne" => $"{columnRef} IS NOT NULL",
+                                _ => throw new McpException(
+                                    $"Filter on '{filter.Column}' with operator '{filter.Operator}' requires a value. Use 'isnull' or 'isnotnull' to test for NULL."),
+                            });
+                            break;
+                        }
+
                         string singleParam = $"@p{index++}";
-                        parameters[singleParam] = (object?)filter.Value ?? DBNull.Value;
+                        parameters[singleParam] = filter.Value;
                         clauses.Add($"{columnRef} {sqlOperator} {singleParam}");
                         break;
                 }
@@ -114,9 +127,9 @@ public static class StructuredQueryBuilder
             sql.Append(" ORDER BY ").Append(string.Join(", ", orderClauses));
         }
 
-        if (provider == DatabaseProvider.PostgreSql)
+        if (provider == DatabaseProvider.PostgreSql && top is int postgresTop)
         {
-            sql.Append(" LIMIT ").Append(top);
+            sql.Append(" LIMIT ").Append(postgresTop);
         }
 
         sql.Append(';');
